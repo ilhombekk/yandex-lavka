@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useProducts } from "../context/ProductContext";
 import { useAuth } from "../context/AuthContext";
 import { useCategories } from "../context/CategoryContext";
+import { uploadImage } from "../lib/uploadImage";
 
 const emptyForm = {
     name: "",
@@ -36,6 +37,7 @@ export default function ProductsPage() {
     const [form, setForm] = useState(emptyForm);
     const [editingId, setEditingId] = useState(null);
     const [newCategory, setNewCategory] = useState("");
+    const [uploadingImage, setUploadingImage] = useState(false);
     
     useEffect(() => {
         if (!editingId && categories.length > 0 && !form.category) {
@@ -52,6 +54,28 @@ export default function ProductsPage() {
             ...prev,
             [name]: value,
         }));
+    }
+    
+    async function handleImageChange(e) {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        
+        setUploadingImage(true);
+        
+        const imageUrl = await uploadImage(file);
+        
+        if (!imageUrl) {
+            alert("Rasm yuklashda xatolik bo‘ldi");
+            setUploadingImage(false);
+            return;
+        }
+        
+        setForm((prev) => ({
+            ...prev,
+            image: imageUrl,
+        }));
+        
+        setUploadingImage(false);
     }
     
     async function handleSubmit(e) {
@@ -260,15 +284,28 @@ export default function ProductsPage() {
         />
         
         <input
-        type="text"
-        name="image"
-        placeholder="Rasm URL"
-        value={form.image}
-        onChange={handleChange}
+        type="file"
+        accept="image/*"
+        onChange={handleImageChange}
         />
         
+        {uploadingImage && <p>Rasm yuklanmoqda...</p>}
+        
+        {form.image && (
+            <img
+            src={form.image}
+            alt="preview"
+            style={{
+                width: "120px",
+                height: "120px",
+                objectFit: "cover",
+                borderRadius: "12px",
+            }}
+            />
+        )}
+        
         <div className="admin-actions">
-        <button type="submit">
+        <button type="submit" disabled={uploadingImage}>
         {editingId ? "Saqlash" : "Qo‘shish"}
         </button>
         
