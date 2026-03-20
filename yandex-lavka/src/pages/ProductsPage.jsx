@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useProducts } from "../context/ProductContext";
 import { useAuth } from "../context/AuthContext";
@@ -17,17 +17,29 @@ function formatPrice(price) {
 }
 
 export default function ProductsPage() {
-    const { products, addProduct, updateProduct, deleteProduct } = useProducts();
+    const {
+        products,
+        loadingProducts,
+        addProduct,
+        updateProduct,
+        deleteProduct,
+    } = useProducts();
+    
     const { logout } = useAuth();
     const { categories, addCategory, deleteCategory, getCategoryLabel } = useCategories();
     
-    const [form, setForm] = useState({
-        ...emptyForm,
-        category: categories[0]?.key || "",
-    });
-    
+    const [form, setForm] = useState(emptyForm);
     const [editingId, setEditingId] = useState(null);
     const [newCategory, setNewCategory] = useState("");
+    
+    useEffect(() => {
+        if (!editingId && categories.length > 0 && !form.category) {
+            setForm((prev) => ({
+                ...prev,
+                category: categories[0].key,
+            }));
+        }
+    }, [categories, editingId, form.category]);
     
     function handleChange(e) {
         const { name, value } = e.target;
@@ -37,7 +49,7 @@ export default function ProductsPage() {
         }));
     }
     
-    function handleSubmit(e) {
+    async function handleSubmit(e) {
         e.preventDefault();
         
         if (
@@ -51,20 +63,27 @@ export default function ProductsPage() {
             return;
         }
         
+        let result;
+        
         if (editingId) {
-            updateProduct({
+            result = await updateProduct({
                 id: editingId,
                 ...form,
             });
         } else {
-            addProduct(form);
+            result = await addProduct(form);
         }
         
+        if (result && result.success === false) {
+            alert("Mahsulot saqlashda xatolik bo‘ldi");
+            return;
+        }
+        
+        setEditingId(null);
         setForm({
             ...emptyForm,
             category: categories[0]?.key || "",
         });
-        setEditingId(null);
     }
     
     function handleEdit(product) {
@@ -78,18 +97,23 @@ export default function ProductsPage() {
         });
     }
     
-    function handleDelete(id) {
+    async function handleDelete(id) {
         const isConfirmed = window.confirm("Mahsulotni o‘chirmoqchimisiz?");
-        if (isConfirmed) {
-            deleteProduct(id);
-            
-            if (editingId === id) {
-                setEditingId(null);
-                setForm({
-                    ...emptyForm,
-                    category: categories[0]?.key || "",
-                });
-            }
+        if (!isConfirmed) return;
+        
+        const result = await deleteProduct(id);
+        
+        if (result && result.success === false) {
+            alert("Mahsulotni o‘chirishda xatolik bo‘ldi");
+            return;
+        }
+        
+        if (editingId === id) {
+            setEditingId(null);
+            setForm({
+                ...emptyForm,
+                category: categories[0]?.key || "",
+            });
         }
     }
     
@@ -127,19 +151,19 @@ export default function ProductsPage() {
         }
         
         const isConfirmed = window.confirm("Kategoriyani o‘chirmoqchimisiz?");
-        if (isConfirmed) {
-            deleteCategory(categoryId);
-            
-            setForm((prev) => {
-                if (prev.category === categoryKey) {
-                    return {
-                        ...prev,
-                        category: "",
-                    };
-                }
-                return prev;
-            });
-        }
+        if (!isConfirmed) return;
+        
+        deleteCategory(categoryId);
+        
+        setForm((prev) => {
+            if (prev.category === categoryKey) {
+                return {
+                    ...prev,
+                    category: "",
+                };
+            }
+            return prev;
+        });
     }
     
     return (
@@ -169,7 +193,6 @@ export default function ProductsPage() {
         value={newCategory}
         onChange={(e) => setNewCategory(e.target.value)}
         />
-        
         <button type="submit">Kategoriya qo‘shish</button>
         </form>
         
@@ -251,7 +274,9 @@ export default function ProductsPage() {
         </div>
         </form>
         
-        {products.length === 0 ? (
+        {loadingProducts ? (
+            <div className="empty-orders">Yuklanmoqda...</div>
+        ) : products.length === 0 ? (
             <div className="empty-orders">Hozircha mahsulotlar yo‘q</div>
         ) : (
             <div className="admin-list">
@@ -274,7 +299,6 @@ export default function ProductsPage() {
                 
                 <div className="admin-card-actions">
                 <button onClick={() => handleEdit(item)}>Edit</button>
-                
                 <button
                 className="delete-btn"
                 onClick={() => handleDelete(item.id)}
