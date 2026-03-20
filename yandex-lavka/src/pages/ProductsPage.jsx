@@ -26,7 +26,12 @@ export default function ProductsPage() {
     } = useProducts();
     
     const { logout } = useAuth();
-    const { categories, addCategory, deleteCategory, getCategoryLabel } = useCategories();
+    const {
+        categories,
+        addCategory,
+        deleteCategory,
+        getCategoryLabel,
+    } = useCategories();
     
     const [form, setForm] = useState(emptyForm);
     const [editingId, setEditingId] = useState(null);
@@ -75,7 +80,7 @@ export default function ProductsPage() {
         }
         
         if (result && result.success === false) {
-            alert("Mahsulot saqlashda xatolik bo‘ldi");
+            alert(result.message || "Mahsulot saqlashda xatolik bo‘ldi");
             return;
         }
         
@@ -104,7 +109,7 @@ export default function ProductsPage() {
         const result = await deleteProduct(id);
         
         if (result && result.success === false) {
-            alert("Mahsulotni o‘chirishda xatolik bo‘ldi");
+            alert(result.message || "Mahsulotni o‘chirishda xatolik bo‘ldi");
             return;
         }
         
@@ -129,20 +134,20 @@ export default function ProductsPage() {
         logout();
     }
     
-    function handleAddCategory(e) {
+    async function handleAddCategory(e) {
         e.preventDefault();
         
-        const result = addCategory(newCategory);
+        const result = await addCategory(newCategory);
         
         if (!result.success) {
-            alert(result.message);
+            alert(result.message || "Kategoriya qo‘shishda xatolik bo‘ldi");
             return;
         }
         
         setNewCategory("");
     }
     
-    function handleDeleteCategory(categoryId, categoryKey) {
+    async function handleDeleteCategory(categoryId, categoryKey) {
         const usedInProducts = products.some((item) => item.category === categoryKey);
         
         if (usedInProducts) {
@@ -153,7 +158,12 @@ export default function ProductsPage() {
         const isConfirmed = window.confirm("Kategoriyani o‘chirmoqchimisiz?");
         if (!isConfirmed) return;
         
-        deleteCategory(categoryId);
+        const result = await deleteCategory(categoryId);
+        
+        if (result && result.success === false) {
+            alert(result.message || "Kategoriyani o‘chirishda xatolik bo‘ldi");
+            return;
+        }
         
         setForm((prev) => {
             if (prev.category === categoryKey) {
