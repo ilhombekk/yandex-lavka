@@ -1,12 +1,7 @@
-import React, { createContext, useContext, useMemo, useState } from "react";
+import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { supabase } from "../lib/supabase";
 
 const CategoryContext = createContext(null);
-
-const initialCategories = [
-    { id: 1, key: "fruit", label: "Mevalar" },
-    { id: 2, key: "drink", label: "Ichimliklar" },
-    { id: 3, key: "sweet", label: "Shirinliklar" },
-];
 
 function slugifyCategory(text) {
     return text
@@ -16,9 +11,6 @@ function slugifyCategory(text) {
     .replace(/g'/g, "g")
     .replace(/o‘/g, "o")
     .replace(/o'/g, "o")
-    .replace(/sh/g, "sh")
-    .replace(/ch/g, "ch")
-    .replace(/ng/g, "ng")
     .replace(/['`’"]/g, "")
     .replace(/[^a-z0-9\s-]/g, "")
     .replace(/\s+/g, "-")
@@ -26,16 +18,32 @@ function slugifyCategory(text) {
 }
 
 export function CategoryProvider({ children }) {
-    const [categories, setCategories] = useState(() => {
-        const saved = localStorage.getItem("categories");
-        return saved ? JSON.parse(saved) : initialCategories;
-    });
+    const [categories, setCategories] = useState([]);
+    const [loadingCategories, setLoadingCategories] = useState(true);
     
-    React.useEffect(() => {
-        localStorage.setItem("categories", JSON.stringify(categories));
-    }, [categories]);
+    async function fetchCategories() {
+        setLoadingCategories(true);
+        
+        const { data, error } = await supabase
+        .from("categories")
+        .select("*")
+        .order("created_at", { ascending: true });
+        
+        if (error) {
+            console.error("Categories fetch error:", error.message);
+            setLoadingCategories(false);
+            return;
+        }
+        
+        setCategories(data || []);
+        setLoadingCategories(false);
+    }
     
-    function addCategory(label) {
+    useEffect(() => {
+        fetchCategories();
+    }, []);
+    
+    async function addCategory(label) {
         const trimmed = label.trim();
         
         if (!trimmed) {
@@ -57,18 +65,35 @@ export function CategoryProvider({ children }) {
             return { success: false, message: "Bu kategoriya allaqachon mavjud" };
         }
         
-        const newCategory = {
-            id: Date.now(),
-            key,
-            label: trimmed,
-        };
+        const { error } = await supabase.from("categories").insert([
+            {
+                key,
+                label: trimmed,
+            },
+        ]);
         
-        setCategories((prev) => [...prev, newCategory]);
+        if (error) {
+            console.error("Add category error:", error.message);
+            return { success: false, message: error.message };
+        }
+        
+        await fetchCategories();
         return { success: true };
     }
     
-    function deleteCategory(id) {
-        setCategories((prev) => prev.filter((item) => item.id !== id));
+    async function deleteCategory(id) {
+        const { error } = await supabase
+        .from("categories")
+        .delete()
+        .eq("id", id);
+        
+        if (error) {
+            console.error("Delete category error:", error.message);
+            return { success: false, message: error.message };
+        }
+        
+        await fetchCategories();
+        return { success: true };
     }
     
     function getCategoryLabel(categoryKey) {
@@ -79,11 +104,13 @@ export function CategoryProvider({ children }) {
     const value = useMemo(
         () => ({
             categories,
+            loadingCategories,
+            fetchCategories,
             addCategory,
             deleteCategory,
             getCategoryLabel,
         }),
-        [categories]
+        [categories, loadingCategories]
     );
     
     return (
