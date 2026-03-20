@@ -3,9 +3,10 @@ import { Routes, Route } from "react-router-dom";
 import HomePage from "./pages/HomePage";
 import AdminLoginPage from "./pages/AdminLoginPage";
 import AdminDashboard from "./pages/AdminDashboard";
+import ProductsPage from "./pages/ProductsPage";
 import ActiveOrdersPage from "./pages/ActiveOrdersPage";
 import OrderHistoryPage from "./pages/OrderHistoryPage";
-import ProductsPage from "./pages/ProductsPage";
+import OrderDetailsPage from "./pages/OrderDetailsPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -38,6 +39,15 @@ export default function App() {
     element={
       <ProtectedRoute>
       <ActiveOrdersPage />
+      </ProtectedRoute>
+    }
+    />
+    
+    <Route
+    path="/admin/orders/:id"
+    element={
+      <ProtectedRoute>
+      <OrderDetailsPage />
       </ProtectedRoute>
     }
     />

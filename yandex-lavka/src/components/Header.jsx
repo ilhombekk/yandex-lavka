@@ -1,5 +1,5 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 export default function Header({
     searchText,
@@ -7,27 +7,43 @@ export default function Header({
     cartCount,
     openCart,
 }) {
+    const navigate = useNavigate();
+    
     return (
-        <header className="header">
-        <div className="container header-wrapper">
-        <Link to="/" className="logo-link">
-        <h1 className="logo">Shovot Lavka</h1>
-        </Link>
+        <header className="site-header">
+        <div className="container header-inner">
         
+        {/* LOGO */}
+        <div className="brand-block">
+        <div className="brand-logo">SL</div>
+        <div>
+        <h1 className="brand-title">Shovot Lavka</h1>
+        <p className="brand-subtitle">Tezkor market</p>
+        </div>
+        </div>
+        
+        {/* SEARCH */}
+        <div className="header-search">
         <input
         type="text"
         placeholder="Mahsulot qidirish..."
         value={searchText}
         onChange={(e) => setSearchText(e.target.value)}
         />
+        </div>
         
+        {/* BUTTONS */}
         <div className="header-actions">
-        <Link to="/admin-login" className="admin-link">
+        <button
+        className="admin-btn"
+        onClick={() => navigate("/admin-login")}
+        >
         Admin
-        </Link>
+        </button>
         
-        <button className="cart-btn" onClick={openCart}>
-        Savatcha ({cartCount})
+        <button className="cart-button" onClick={openCart}>
+        <span>Savatcha</span>
+        <span className="cart-badge">{cartCount}</span>
         </button>
         </div>
         </div>

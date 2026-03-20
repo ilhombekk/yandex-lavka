@@ -3,24 +3,24 @@ import { supabase } from "../lib/supabase";
 
 const OrderContext = createContext(null);
 
+function normalizeOrders(data) {
+    return (data || []).map((order) => ({
+        id: order.id,
+        createdAt: order.created_at,
+        status: order.status,
+        totalPrice: Number(order.total_price),
+        customer: {
+            name: order.customer_name,
+            phone: order.customer_phone,
+            address: order.customer_address,
+        },
+        items: order.items || [],
+    }));
+}
+
 export function OrderProvider({ children }) {
     const [orders, setOrders] = useState([]);
     const [loadingOrders, setLoadingOrders] = useState(true);
-    
-    function normalizeOrders(data) {
-        return (data || []).map((order) => ({
-            id: order.id,
-            createdAt: order.created_at,
-            status: order.status,
-            totalPrice: Number(order.total_price),
-            customer: {
-                name: order.customer_name,
-                phone: order.customer_phone,
-                address: order.customer_address,
-            },
-            items: order.items || [],
-        }));
-    }
     
     async function fetchOrders() {
         setLoadingOrders(true);
@@ -42,6 +42,21 @@ export function OrderProvider({ children }) {
     
     useEffect(() => {
         fetchOrders();
+        
+        const channel = supabase
+        .channel("orders-realtime")
+        .on(
+            "postgres_changes",
+            { event: "*", schema: "public", table: "orders" },
+            () => {
+                fetchOrders();
+            }
+        )
+        .subscribe();
+        
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, []);
     
     async function createOrder(orderData) {
@@ -57,11 +72,9 @@ export function OrderProvider({ children }) {
         ]);
         
         if (error) {
-            console.error("Create order error:", error.message);
             return { success: false, message: error.message };
         }
         
-        await fetchOrders();
         return { success: true };
     }
     
@@ -72,11 +85,9 @@ export function OrderProvider({ children }) {
         .eq("id", orderId);
         
         if (error) {
-            console.error("Update order status error:", error.message);
             return { success: false, message: error.message };
         }
         
-        await fetchOrders();
         return { success: true };
     }
     
@@ -87,11 +98,9 @@ export function OrderProvider({ children }) {
         .eq("id", orderId);
         
         if (error) {
-            console.error("Delete order error:", error.message);
             return { success: false, message: error.message };
         }
         
-        await fetchOrders();
         return { success: true };
     }
     
@@ -107,11 +116,7 @@ export function OrderProvider({ children }) {
         [orders, loadingOrders]
     );
     
-    return (
-        <OrderContext.Provider value={value}>
-        {children}
-        </OrderContext.Provider>
-    );
+    return <OrderContext.Provider value={value}>{children}</OrderContext.Provider>;
 }
 
 export function useOrders() {

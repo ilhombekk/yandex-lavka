@@ -1,7 +1,8 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
+import toast from "react-hot-toast";
 import { Link } from "react-router-dom";
+import AdminLayout from "../components/AdminLayout";
 import { useOrders } from "../context/OrderContext";
-import { useAuth } from "../context/AuthContext";
 
 function formatPrice(price) {
     return Number(price).toLocaleString("ru-RU");
@@ -24,132 +25,113 @@ function getStatusLabel(status) {
 
 export default function ActiveOrdersPage() {
     const { orders, updateOrderStatus, deleteOrder, loadingOrders } = useOrders();
-    const { logout } = useAuth();
+    const [search, setSearch] = useState("");
+    const [statusFilter, setStatusFilter] = useState("all");
     
-    const activeOrders = useMemo(() => {
-        return orders.filter((order) => order.status !== "delivered");
-    }, [orders]);
-    
-    function handleLogout() {
-        logout();
-    }
-    
-    async function handleStatusChange(orderId, newStatus) {
-        const result = await updateOrderStatus(orderId, newStatus);
+    const filteredOrders = useMemo(() => {
+        let data = orders.filter((order) => order.status !== "delivered");
         
-        if (result && result.success === false) {
-            alert("Statusni o‘zgartirishda xatolik bo‘ldi");
+        if (statusFilter !== "all") {
+            data = data.filter((order) => order.status === statusFilter);
         }
+        
+        if (search.trim()) {
+            data = data.filter((order) =>
+                order.customer?.name?.toLowerCase().includes(search.toLowerCase()) ||
+            order.customer?.phone?.includes(search)
+        );
     }
     
-    async function handleDeleteOrder(orderId) {
-        const isConfirmed = window.confirm("Buyurtmani o‘chirmoqchimisiz?");
-        if (!isConfirmed) return;
-        
-        const result = await deleteOrder(orderId);
-        
-        if (result && result.success === false) {
-            alert("Buyurtmani o‘chirishda xatolik bo‘ldi");
-        }
+    return data;
+}, [orders, search, statusFilter]);
+
+async function handleStatusChange(orderId, newStatus) {
+    const result = await updateOrderStatus(orderId, newStatus);
+    
+    if (result && result.success === false) {
+        toast.error("Statusni o‘zgartirishda xatolik");
+        return;
     }
     
-    return (
-        <div className="admin-page">
-        <div className="container">
-        <div className="admin-top">
-        <h2 className="admin-title">Faol buyurtmalar</h2>
-        
-        <div className="admin-top-actions">
-        <Link to="/admin" className="back-link">
-        Dashboard
-        </Link>
-        
-        <Link to="/admin/products" className="back-link">
-        Mahsulotlar
-        </Link>
-        
-        <Link to="/admin/history" className="back-link">
-        Buyurtmalar tarixi
-        </Link>
-        
-        <button className="logout-btn" onClick={handleLogout}>
-        Chiqish
-        </button>
-        </div>
-        </div>
-        
-        {loadingOrders ? (
-            <div className="empty-orders">Yuklanmoqda...</div>
-        ) : activeOrders.length === 0 ? (
-            <div className="empty-orders">Hozircha faol buyurtmalar yo‘q</div>
-        ) : (
-            <div className="orders-list">
-            {activeOrders.map((order) => (
-                <div className="order-card" key={order.id}>
-                <div className="order-top">
-                <h4>Buyurtma #{order.id}</h4>
-                <span className={`order-status status-${order.status}`}>
-                {getStatusLabel(order.status)}
-                </span>
-                </div>
-                
-                <div className="order-info">
-                <p>
-                <strong>Ism:</strong> {order.customer?.name}
-                </p>
-                <p>
-                <strong>Telefon:</strong> {order.customer?.phone}
-                </p>
-                <p>
-                <strong>Manzil:</strong> {order.customer?.address}
-                </p>
-                <p>
-                <strong>Sana:</strong> {new Date(order.createdAt).toLocaleString()}
-                </p>
-                <p>
-                <strong>Jami:</strong> {formatPrice(order.totalPrice)} so'm
-                </p>
-                </div>
-                
-                <div className="order-products">
-                <h5>Mahsulotlar:</h5>
-                
-                {order.items?.map((item, index) => (
-                    <div className="order-product-item" key={`${item.id}-${index}`}>
-                    <span>
-                    {item.name} x {item.quantity}
-                    </span>
-                    <strong>
-                    {formatPrice(item.price * item.quantity)} so'm
-                    </strong>
-                    </div>
-                ))}
-                </div>
-                
-                <div className="order-actions">
-                <select
-                className="order-select"
-                value={order.status}
-                onChange={(e) => handleStatusChange(order.id, e.target.value)}
-                >
-                <option value="pending">Kutilmoqda</option>
-                <option value="accepted">Qabul qilindi</option>
-                <option value="delivered">Yetkazildi</option>
-                <option value="cancelled">Bekor qilindi</option>
-                </select>
-                
-                <button
-                className="delete-order-btn"
-                onClick={() => handleDeleteOrder(order.id)}
-                >
-                Buyurtmani o‘chirish
-                </button>
-                </div>
-                </div>
-            ))}
+    toast.success("Status yangilandi");
+}
+
+async function handleDeleteOrder(orderId) {
+    if (!window.confirm("Buyurtmani o‘chirmoqchimisiz?")) return;
+    
+    const result = await deleteOrder(orderId);
+    
+    if (result && result.success === false) {
+        toast.error("Buyurtmani o‘chirishda xatolik");
+        return;
+    }
+    
+    toast.success("Buyurtma o‘chirildi");
+}
+
+return (
+    <AdminLayout title="Faol buyurtmalar">
+    <div className="admin-toolbar">
+    <input
+    type="text"
+    placeholder="Ism yoki telefon bo‘yicha qidirish"
+    value={search}
+    onChange={(e) => setSearch(e.target.value)}
+    />
+    
+    <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+    <option value="all">Barcha statuslar</option>
+    <option value="pending">Kutilmoqda</option>
+    <option value="accepted">Qabul qilindi</option>
+    <option value="cancelled">Bekor qilindi</option>
+    </select>
+    </div>
+    
+    {loadingOrders ? (
+        <div className="empty-orders">Yuklanmoqda...</div>
+    ) : filteredOrders.length === 0 ? (
+        <div className="empty-orders">Faol buyurtmalar yo‘q</div>
+    ) : (
+        <div className="orders-list">
+        {filteredOrders.map((order) => (
+            <div className="order-card" key={order.id}>
+            <div className="order-top">
+            <h4>
+            <Link to={`/admin/orders/${order.id}`}>Buyurtma #{order.id}</Link>
+            </h4>
+            <span className={`order-status status-${order.status}`}>
+            {getStatusLabel(order.status)}
+            </span>
             </div>
-        )}
+            
+            <div className="order-info">
+            <p><strong>Ism:</strong> {order.customer?.name}</p>
+            <p><strong>Telefon:</strong> {order.customer?.phone}</p>
+            <p><strong>Manzil:</strong> {order.customer?.address}</p>
+            <p><strong>Sana:</strong> {new Date(order.createdAt).toLocaleString()}</p>
+            <p><strong>Jami:</strong> {formatPrice(order.totalPrice)} so'm</p>
+            </div>
+            
+            <div className="order-actions">
+            <select
+            className="order-select"
+            value={order.status}
+            onChange={(e) => handleStatusChange(order.id, e.target.value)}
+            >
+            <option value="pending">Kutilmoqda</option>
+            <option value="accepted">Qabul qilindi</option>
+            <option value="delivered">Yetkazildi</option>
+            <option value="cancelled">Bekor qilindi</option>
+            </select>
+            
+            <button className="delete-order-btn" onClick={() => handleDeleteOrder(order.id)}>
+            O‘chirish
+            </button>
+            </div>
+            </div>
+        ))}
         </div>
-        </div>
-    );
+    )}
+    </AdminLayout>
+);
 }

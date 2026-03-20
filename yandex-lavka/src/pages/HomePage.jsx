@@ -8,7 +8,7 @@ import { useCart } from "../context/CartContext";
 import { useOrders } from "../context/OrderContext";
 
 export default function HomePage() {
-    const { products } = useProducts();
+    const { products, loadingProducts } = useProducts();
     
     const {
         cart,
@@ -48,6 +48,10 @@ export default function HomePage() {
     
     return filtered;
 }, [products, selectedCategory, searchText]);
+
+const featuredProducts = useMemo(() => {
+    return [...products].slice(0, 4);
+}, [products]);
 
 function handleCheckoutOpen() {
     setShowCheckout(true);
@@ -111,14 +115,86 @@ return (
     />
     
     <main className="container">
+    <section className="hero">
+    <div className="hero-content">
+    <span className="hero-badge">Tez yetkazib berish</span>
+    <h1>Shovot Lavka — mahsulotlar bir necha daqiqada</h1>
+    <p>
+    Kundalik kerakli mahsulotlarni tez toping, savatga qo‘shing va
+    buyurtma bering.
+    </p>
+    
+    <div className="hero-actions">
+    <button
+    className="hero-primary-btn"
+    onClick={() => window.scrollTo({ top: 520, behavior: "smooth" })}
+    >
+    Xaridni boshlash
+    </button>
+    
+    <button
+    className="hero-secondary-btn"
+    onClick={() => setIsCartOpen(true)}
+    >
+    Savatchani ochish
+    </button>
+    </div>
+    </div>
+    
+    <div className="hero-card">
+    <div className="hero-stat">
+    <strong>{products.length}+</strong>
+    <span>Mahsulot</span>
+    </div>
+    <div className="hero-stat">
+    <strong>{cartCount}</strong>
+    <span>Savatchada</span>
+    </div>
+    <div className="hero-stat">
+    <strong>24/7</strong>
+    <span>Qulay buyurtma</span>
+    </div>
+    </div>
+    </section>
+    
+    {featuredProducts.length > 0 && (
+        <section className="featured-section">
+        <div className="section-header">
+        <h2>Mashhur mahsulotlar</h2>
+        <p>Eng ko‘p tanlanayotgan mahsulotlar</p>
+        </div>
+        
+        <div className="featured-grid">
+        {featuredProducts.map((product) => (
+            <ProductCard
+            key={`featured-${product.id}`}
+            product={product}
+            addToCart={addToCart}
+            />
+        ))}
+        </div>
+        </section>
+    )}
+    
+    <section className="catalog-section">
+    <div className="section-header">
+    <h2>Barcha mahsulotlar</h2>
+    <p>Qidiruv va kategoriya orqali tez toping</p>
+    </div>
+    
     <Categories
     selectedCategory={selectedCategory}
     setSelectedCategory={setSelectedCategory}
     />
     
     <section className="products">
-    {filteredProducts.length === 0 ? (
-        <div className="not-found">Mahsulot topilmadi</div>
+    {loadingProducts ? (
+        <div className="not-found">Mahsulotlar yuklanmoqda...</div>
+    ) : filteredProducts.length === 0 ? (
+        <div className="not-found">
+        <h3>Mahsulot topilmadi</h3>
+        <p>Boshqa kategoriya yoki qidiruv so‘zini sinab ko‘ring.</p>
+        </div>
     ) : (
         filteredProducts.map((product) => (
             <ProductCard
@@ -128,6 +204,7 @@ return (
             />
         ))
     )}
+    </section>
     </section>
     </main>
     

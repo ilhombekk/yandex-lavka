@@ -16,7 +16,9 @@ export default function Categories({ selectedCategory, setSelectedCategory }) {
         {categories.map((item) => (
             <button
             key={item.id}
-            className={`category-btn ${selectedCategory === item.key ? "active" : ""}`}
+            className={`category-btn ${
+                selectedCategory === item.key ? "active" : ""
+            }`}
             onClick={() => setSelectedCategory(item.key)}
             >
             {item.label}
