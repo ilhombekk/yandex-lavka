@@ -284,6 +284,14 @@ export default function ProductsPage() {
         />
         
         <input
+        type="text"
+        name="image"
+        placeholder="Rasm URL yoki uploaddan keyingi link"
+        value={form.image}
+        onChange={handleChange}
+        />
+        
+        <input
         type="file"
         accept="image/*"
         onChange={handleImageChange}
