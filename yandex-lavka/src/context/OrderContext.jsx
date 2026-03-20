@@ -60,7 +60,9 @@ export function OrderProvider({ children }) {
     }, []);
     
     async function createOrder(orderData) {
-        const { error } = await supabase.from("orders").insert([
+        const { data, error } = await supabase
+        .from("orders")
+        .insert([
             {
                 customer_name: orderData.customer.name,
                 customer_phone: orderData.customer.phone,
@@ -69,54 +71,78 @@ export function OrderProvider({ children }) {
                 total_price: orderData.totalPrice,
                 status: "pending",
             },
-        ]);
+        ])
+        .select();
         
         if (error) {
             return { success: false, message: error.message };
+        }
+        
+        if (data) {
+            const normalized = normalizeOrders(data);
+            setOrders((prev) => [...normalized, ...prev]);
         }
         
         return { success: true };
     }
     
     async function updateOrderStatus(orderId, newStatus) {
-        const { error } = await supabase
-        .from("orders")
-        .update({ status: newStatus })
-        .eq("id", orderId);
+        const previousOrders = orders;
         
-        if (error) {
-            return { success: false, message: error.message };
-        }
-        
-        return { success: true };
+        setOrders((prev) =>
+            prev.map((order) =>
+                order.id === orderId ? { ...order, status: newStatus } : order
+    )
+);
+
+const { error } = await supabase
+.from("orders")
+.update({ status: newStatus })
+.eq("id", orderId);
+
+if (error) {
+    setOrders(previousOrders);
+    return { success: false, message: error.message };
+}
+
+return { success: true };
+}
+
+async function deleteOrder(orderId) {
+    const previousOrders = orders;
+    
+    setOrders((prev) => prev.filter((order) => order.id !== orderId));
+    
+    const { error } = await supabase
+    .from("orders")
+    .delete()
+    .eq("id", orderId);
+    
+    if (error) {
+        setOrders(previousOrders);
+        return { success: false, message: error.message };
     }
     
-    async function deleteOrder(orderId) {
-        const { error } = await supabase
-        .from("orders")
-        .delete()
-        .eq("id", orderId);
-        
-        if (error) {
-            return { success: false, message: error.message };
-        }
-        
-        return { success: true };
-    }
-    
-    const value = useMemo(
-        () => ({
-            orders,
-            loadingOrders,
-            fetchOrders,
-            createOrder,
-            updateOrderStatus,
-            deleteOrder,
-        }),
-        [orders, loadingOrders]
-    );
-    
-    return <OrderContext.Provider value={value}>{children}</OrderContext.Provider>;
+    return { success: true };
+}
+
+const value = useMemo(
+    () => ({
+        orders,
+        loadingOrders,
+        fetchOrders,
+        createOrder,
+        updateOrderStatus,
+        deleteOrder,
+    }),
+    [orders, loadingOrders]
+);
+
+return (
+    <OrderContext.Provider value={value}>
+    {children}
+    </OrderContext.Provider>
+);
 }
 
 export function useOrders() {
