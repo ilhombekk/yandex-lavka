@@ -23,7 +23,7 @@ function getStatusLabel(status) {
 }
 
 export default function ActiveOrdersPage() {
-    const { orders, updateOrderStatus, deleteOrder } = useOrders();
+    const { orders, updateOrderStatus, deleteOrder, loadingOrders } = useOrders();
     const { logout } = useAuth();
     
     const activeOrders = useMemo(() => {
@@ -32,6 +32,25 @@ export default function ActiveOrdersPage() {
     
     function handleLogout() {
         logout();
+    }
+    
+    async function handleStatusChange(orderId, newStatus) {
+        const result = await updateOrderStatus(orderId, newStatus);
+        
+        if (result && result.success === false) {
+            alert("Statusni o‘zgartirishda xatolik bo‘ldi");
+        }
+    }
+    
+    async function handleDeleteOrder(orderId) {
+        const isConfirmed = window.confirm("Buyurtmani o‘chirmoqchimisiz?");
+        if (!isConfirmed) return;
+        
+        const result = await deleteOrder(orderId);
+        
+        if (result && result.success === false) {
+            alert("Buyurtmani o‘chirishda xatolik bo‘ldi");
+        }
     }
     
     return (
@@ -59,7 +78,9 @@ export default function ActiveOrdersPage() {
         </div>
         </div>
         
-        {activeOrders.length === 0 ? (
+        {loadingOrders ? (
+            <div className="empty-orders">Yuklanmoqda...</div>
+        ) : activeOrders.length === 0 ? (
             <div className="empty-orders">Hozircha faol buyurtmalar yo‘q</div>
         ) : (
             <div className="orders-list">
@@ -83,7 +104,7 @@ export default function ActiveOrdersPage() {
                 <strong>Manzil:</strong> {order.customer?.address}
                 </p>
                 <p>
-                <strong>Sana:</strong> {order.createdAt}
+                <strong>Sana:</strong> {new Date(order.createdAt).toLocaleString()}
                 </p>
                 <p>
                 <strong>Jami:</strong> {formatPrice(order.totalPrice)} so'm
@@ -93,8 +114,8 @@ export default function ActiveOrdersPage() {
                 <div className="order-products">
                 <h5>Mahsulotlar:</h5>
                 
-                {order.items?.map((item) => (
-                    <div className="order-product-item" key={item.id}>
+                {order.items?.map((item, index) => (
+                    <div className="order-product-item" key={`${item.id}-${index}`}>
                     <span>
                     {item.name} x {item.quantity}
                     </span>
@@ -109,9 +130,7 @@ export default function ActiveOrdersPage() {
                 <select
                 className="order-select"
                 value={order.status}
-                onChange={(e) =>
-                    updateOrderStatus(order.id, e.target.value)
-                }
+                onChange={(e) => handleStatusChange(order.id, e.target.value)}
                 >
                 <option value="pending">Kutilmoqda</option>
                 <option value="accepted">Qabul qilindi</option>
@@ -121,7 +140,7 @@ export default function ActiveOrdersPage() {
                 
                 <button
                 className="delete-order-btn"
-                onClick={() => deleteOrder(order.id)}
+                onClick={() => handleDeleteOrder(order.id)}
                 >
                 Buyurtmani o‘chirish
                 </button>

@@ -9,6 +9,7 @@ import { useOrders } from "../context/OrderContext";
 
 export default function HomePage() {
     const { products } = useProducts();
+    
     const {
         cart,
         addToCart,
@@ -64,7 +65,7 @@ function handleCustomerChange(e) {
     }));
 }
 
-function handleOrderSubmit(e) {
+async function handleOrderSubmit(e) {
     e.preventDefault();
     
     if (!customer.name || !customer.phone || !customer.address) {
@@ -77,11 +78,16 @@ function handleOrderSubmit(e) {
         return;
     }
     
-    createOrder({
+    const result = await createOrder({
         customer,
         items: cart,
         totalPrice,
     });
+    
+    if (result && result.success === false) {
+        alert("Buyurtma yuborishda xatolik bo‘ldi");
+        return;
+    }
     
     clearCart();
     setShowCheckout(false);

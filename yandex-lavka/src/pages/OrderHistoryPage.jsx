@@ -8,7 +8,7 @@ function formatPrice(price) {
 }
 
 export default function OrderHistoryPage() {
-    const { orders, deleteOrder } = useOrders();
+    const { orders, deleteOrder, loadingOrders } = useOrders();
     const { logout } = useAuth();
     
     const deliveredOrders = useMemo(() => {
@@ -17,6 +17,17 @@ export default function OrderHistoryPage() {
     
     function handleLogout() {
         logout();
+    }
+    
+    async function handleDeleteOrder(orderId) {
+        const isConfirmed = window.confirm("Tarixdan o‘chirmoqchimisiz?");
+        if (!isConfirmed) return;
+        
+        const result = await deleteOrder(orderId);
+        
+        if (result && result.success === false) {
+            alert("Buyurtmani o‘chirishda xatolik bo‘ldi");
+        }
     }
     
     return (
@@ -44,7 +55,9 @@ export default function OrderHistoryPage() {
         </div>
         </div>
         
-        {deliveredOrders.length === 0 ? (
+        {loadingOrders ? (
+            <div className="empty-orders">Yuklanmoqda...</div>
+        ) : deliveredOrders.length === 0 ? (
             <div className="empty-orders">
             Hozircha yetkazilgan buyurtmalar yo‘q
             </div>
@@ -70,7 +83,7 @@ export default function OrderHistoryPage() {
                 <strong>Manzil:</strong> {order.customer?.address}
                 </p>
                 <p>
-                <strong>Sana:</strong> {order.createdAt}
+                <strong>Sana:</strong> {new Date(order.createdAt).toLocaleString()}
                 </p>
                 <p>
                 <strong>Jami:</strong> {formatPrice(order.totalPrice)} so'm
@@ -80,8 +93,8 @@ export default function OrderHistoryPage() {
                 <div className="order-products">
                 <h5>Mahsulotlar:</h5>
                 
-                {order.items?.map((item) => (
-                    <div className="order-product-item" key={item.id}>
+                {order.items?.map((item, index) => (
+                    <div className="order-product-item" key={`${item.id}-${index}`}>
                     <span>
                     {item.name} x {item.quantity}
                     </span>
@@ -95,7 +108,7 @@ export default function OrderHistoryPage() {
                 <div className="order-actions">
                 <button
                 className="delete-order-btn"
-                onClick={() => deleteOrder(order.id)}
+                onClick={() => handleDeleteOrder(order.id)}
                 >
                 Tarixdan o‘chirish
                 </button>
